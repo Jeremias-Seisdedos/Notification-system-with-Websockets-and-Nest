@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications with WebSockets</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+        integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <section class="container-notifications">
+        <header>
+            <h1>Notificaciones</h1>
+            <div class="status-offline">
+                Desconectado
+            </div>
+        </header>
+
+        <div class="user-panel">
+            <input type="text" id="userId" placeholder="Tu ID de usuario">
+            <button id="connectBtn">Conectar</button>
+            <button id="disconnectBtn">Desconectar</button>
+        </div>
+
+        <div id="notificationsList"></div>
+    </section>
+
+    <script>
+        const socket = io('http://localhost:3000', { autoConnect: false });
+
+        const $connectBtn = document.getElementById('connectBtn');
+        const $userId = document.getElementById('userId');
+        const $statusOffline = document.querySelector('.status-offline');
+        const $disconnectBtn = document.getElementById('disconnectBtn');
+
+        let registered = false;
+        let currentUserId = null;
+        let notifications = [];
+
+        $connectBtn.addEventListener('click', () => {
+            if (registered)
+                return alert('Ya estás registrado');
+            const id = $userId.value.trim();
+            if (!id)
+                return alert('Ingresa un ID de usuario valido');
+            currentUserId = id;
+            socket.connect();
+        });
+
+        $disconnectBtn.addEventListener('click', () => {
+            if (!registered)
+                return alert('No estás registrado');
+            registered = false;
+            socket.disconnect();
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket desconectado');
+            $statusOffline.textContent = 'Desconectado';
+            $statusOffline.classList.add('status-offline');
+            $statusOffline.style.color = 'red';
+            $statusOffline.style.fontStyle = 'normal';
+        });
+
+
+        socket.on('connect', () => {
+            console.log('Socket conectado', socket.id);
+            $statusOffline.textContent = 'Conectado';
+            $statusOffline.classList.remove('status-offline');
+            $statusOffline.style.color = 'green';
+            $statusOffline.style.fontStyle = 'italic';
+
+            socket.emit('registerUser', { userId: currentUserId })
+        })
+
+        socket.on('the user was registered', (data) => {
+            console.log('Registrado en el servicio: ', data);
+            registered = true;
+        })
+
+        socket.on('userRegistered', (payload) => {
+            console.log('Otro usuario registrado fue registrado:', payload);
+        });
+
+        socket.on('new notification', (notification) => {
+            console.log('🔔 Nueva notificación recibida:', notification);
+            notifications.push(notification);
+            renderNotifications();
+        });
+
+        socket.on('notificationMarkedAsRead', (notification) => {
+            console.log('✅ Notificación marcada como leída:', notification);
+            const idx = notifications.findIndex(n => n.id === notification.id);
+            if (idx !== -1) notifications[idx] = notification;
+            renderNotifications();
+        });
+
+        function renderNotifications() {
+            const $notificationsList = document.getElementById('notificationsList');
+
+            if (notifications.length === 0) {
+                $notificationsList.innerHTML = '<p>No hay notificaciones</p>';
+                return;
+            }
+
+            const ul = document.createElement('ul');
+            notifications.forEach(noti => {
+                const li = document.createElement('li');
+                li.classList.add('notification')
+                if(noti.read) li.classList.add('read');
+                li.innerHTML = `
+                    <strong>${noti.type}</strong>: ${noti.message} 
+                    ${noti.read ? '(leída)' : '(sin leer)'} <br>
+                    <small>${new Date(noti.timestamp).toLocaleString()}</small>
+                    ${!noti.read ? `<button onclick="markAsRead('${noti.id}')">Marcar como leída</button>` : ''}
+                `;
+                ul.appendChild(li);
+            });
+            $notificationsList.innerHTML = '';
+            $notificationsList.appendChild(ul);
+        }
+
+        function markAsRead(notificationId) {
+            socket.emit('markAsRead', { notificationId });
+        }
+
+        socket.on('notificationNoRegistered', (msg) => console.warn(msg));
+        socket.on('notificationError', (err) => console.warn(err));
+        socket.on('markAsReadError', (err) => console.warn(err));
+
+    </script>
+</body>
+</html>
