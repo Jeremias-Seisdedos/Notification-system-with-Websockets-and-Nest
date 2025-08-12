@@ -14,16 +14,16 @@
 <body>
     <section class="container-notifications">
         <header>
-            <h1>Notificaciones</h1>
+            <h1>Notifications</h1>
             <div class="status-offline">
-                Desconectado
+                Disconnected
             </div>
         </header>
 
         <div class="user-panel">
-            <input type="text" id="userId" placeholder="Tu ID de usuario">
-            <button id="connectBtn">Conectar</button>
-            <button id="disconnectBtn">Desconectar</button>
+            <input type="text" id="userId" placeholder="Your user ID">
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn">Disconnect</button>
         </div>
 
         <div id="notificationsList"></div>
@@ -43,24 +43,24 @@
 
         $connectBtn.addEventListener('click', () => {
             if (registered)
-                return alert('Ya estás registrado');
+                return alert('You are already registered');
             const id = $userId.value.trim();
             if (!id)
-                return alert('Ingresa un ID de usuario valido');
+                return alert('Please enter a valid user ID');
             currentUserId = id;
             socket.connect();
         });
 
         $disconnectBtn.addEventListener('click', () => {
             if (!registered)
-                return alert('No estás registrado');
+                return alert('You are not registered');
             registered = false;
             socket.disconnect();
         });
 
         socket.on('disconnect', () => {
-            console.log('Socket desconectado');
-            $statusOffline.textContent = 'Desconectado';
+            console.log('Socket disconnected');
+            $statusOffline.textContent = 'Disconnected';
             $statusOffline.classList.add('status-offline');
             $statusOffline.style.color = 'red';
             $statusOffline.style.fontStyle = 'normal';
@@ -68,8 +68,8 @@
 
 
         socket.on('connect', () => {
-            console.log('Socket conectado', socket.id);
-            $statusOffline.textContent = 'Conectado';
+            console.log('Socket connected', socket.id);
+            $statusOffline.textContent = 'Connected';
             $statusOffline.classList.remove('status-offline');
             $statusOffline.style.color = 'green';
             $statusOffline.style.fontStyle = 'italic';
@@ -78,22 +78,22 @@
         })
 
         socket.on('the user was registered', (data) => {
-            console.log('Registrado en el servicio: ', data);
+            console.log('Registered in the service: ', data);
             registered = true;
         })
 
         socket.on('userRegistered', (payload) => {
-            console.log('Otro usuario registrado fue registrado:', payload);
+            console.log('Another registered user was registered:', payload);
         });
 
         socket.on('new notification', (notification) => {
-            console.log('🔔 Nueva notificación recibida:', notification);
+            console.log('🔔 New notification received:', notification);
             notifications.push(notification);
             renderNotifications();
         });
 
         socket.on('notificationMarkedAsRead', (notification) => {
-            console.log('✅ Notificación marcada como leída:', notification);
+            console.log('✅ notification marked as read:', notification);
             const idx = notifications.findIndex(n => n.id === notification.id);
             if (idx !== -1) notifications[idx] = notification;
             renderNotifications();
@@ -103,7 +103,7 @@
             const $notificationsList = document.getElementById('notificationsList');
 
             if (notifications.length === 0) {
-                $notificationsList.innerHTML = '<p>No hay notificaciones</p>';
+                $notificationsList.innerHTML = '<p>No notifications</p>';
                 return;
             }
 
@@ -114,9 +114,9 @@
                 if(noti.read) li.classList.add('read');
                 li.innerHTML = `
                     <strong>${noti.type}</strong>: ${noti.message} 
-                    ${noti.read ? '(leída)' : '(sin leer)'} <br>
+                    ${noti.read ? '(read)' : '(unread)'} <br>
                     <small>${new Date(noti.timestamp).toLocaleString()}</small>
-                    ${!noti.read ? `<button onclick="markAsRead('${noti.id}')">Marcar como leída</button>` : ''}
+                    ${!noti.read ? `<button onclick="markAsRead('${noti.id}')">Mark as read</button>` : ''}
                 `;
                 ul.appendChild(li);
             });
